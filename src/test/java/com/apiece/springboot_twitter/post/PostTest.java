@@ -12,7 +12,7 @@ class PostTest {
         post.increaseCommentCount();
 
         // 임시 테스트용
-        // 테스트
+        // 테스트 123
         assertEquals(1, post.getCommentCount());
     }
 }
