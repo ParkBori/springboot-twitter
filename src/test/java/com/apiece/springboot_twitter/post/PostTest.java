@@ -11,6 +11,7 @@ class PostTest {
         Post post = Post.builder().build();
         post.increaseCommentCount();
 
+        // 임시 테스트용
         assertEquals(1, post.getCommentCount());
     }
 }
