@@ -1,6 +1,7 @@
 package com.apiece.springboot_twitter.comment;
 
 
+import com.apiece.springboot_twitter.post.Post;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -19,8 +20,9 @@ public class Comment {
     private Long id;
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
-    @Column(nullable = false)
-    private Long postId;
+    @ManyToOne(fetch = FetchType.LAZY)  // -> 해당 값을 가져올때 쿼리 문이 발생
+    @JoinColumn(name = "post_id")
+    private Post post;
     @Column(nullable = false)
     private LocalDateTime createdAt;
     @Column(nullable = false)

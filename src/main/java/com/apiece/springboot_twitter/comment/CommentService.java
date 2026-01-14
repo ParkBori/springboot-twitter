@@ -5,12 +5,15 @@ import com.apiece.springboot_twitter.dto.CommentResponse;
 import com.apiece.springboot_twitter.post.Post;
 import com.apiece.springboot_twitter.post.PostRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 /*
@@ -26,12 +29,14 @@ final 필드나 @NonNull 어노테이션이 붙은 필드에 대한 생성자를
 */
 
 /*
-* 현재 서비스의 문제점이라고 할 수 있는 부분
-* 여기는 comment 관련 서비스(비지니스로직)이 처리 되는 곳임
-* 댓글이 삭제됨에 따라 게시글의 댓글 카운트가 증/감하게 되는 역할이
-* 여기에 부여되어있음.
-* */
+ * 현재 서비스의 문제점이라고 할 수 있는 부분
+ * 여기는 comment 관련 서비스(비지니스로직)이 처리 되는 곳임
+ * 댓글이 삭제됨에 따라 게시글의 댓글 카운트가 증/감하게 되는 역할이
+ * 여기에 부여되어있음.
+ * */
+@Slf4j
 @RequiredArgsConstructor
+@Transactional
 public class CommentService {
     private final CommentRepository commentRepository;
     private final PostRepository postRepository;
@@ -44,13 +49,20 @@ public class CommentService {
         // request dto -> entity
         Comment comment = Comment.builder()
                 .content(request.content())
-                .postId(postId)
+                .post(post)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
 
         // CoomentRepository 를 통해 commtent 를 db 에 저장
         Comment savedComment = commentRepository.save(comment);
+
+        // 트랜잭션을 위한 강제 오류 발생시키기
+//        if (Objects.equals(postId, 20L)) {
+//            throw new RuntimeException("애플리케이션 오류 발생");
+//        }
+
+
         // 댓글 개수 늘리기
         post.increaseCommentCount();
         // PostRepositoy 를 통해 commtent 를 db 에 저장
@@ -58,6 +70,7 @@ public class CommentService {
         return CommentResponse.from(savedComment);
     }
 
+    @Transactional(readOnly = true)
     public List<CommentResponse> getComments(Long postId) {
 
         // 댓글을 가져올 게시물이 존재한지 확인
@@ -86,10 +99,23 @@ public class CommentService {
             @PathVariable Long commentId
     ) {
         Comment comment = commentRepository.findByIdAndPostId(commentId, postId).orElseThrow(() -> new IllegalArgumentException("댓글을 찾을 수 없습니다"));
-        Post post = postRepository.findById(postId).orElseThrow(() -> new IllegalArgumentException("게시물이 존재하지 않습니다"));
+        Post post = comment.getPost(); // 객체를 얻는 로직이 자동으로 쿼리로 이어짐 ORM 특성
 
         post.decreaseCommentCount();
         postRepository.save(post);
         commentRepository.delete(comment);
+    }
+
+    @Transactional(readOnly = true)
+    public List<CommentResponse> getAllComments() {
+
+        return commentRepository.findAll()
+                .stream()
+                .map(comment -> {
+                    Post post = comment.getPost();
+                    log.info("댓글 ID:{}, 게시글 ID:{}, 게시글 내용:{}", comment.getId(), post.getId(), post.getContent());
+                    return CommentResponse.from(comment);
+                })
+                .toList();
     }
 }
